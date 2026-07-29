@@ -1,0 +1,46 @@
+Структура проекта: Agents-practises
+
+├── .dockerignore
+├── .env
+├── .gitignore
+├── Dockerfile
+├── LICENSE
+├── current_env.txt
+├── docker-compose.yml
+├── pyproject.toml
+├── run.py
+├── storage
+├── tg_bot_rag_faq
+│   ├── .env.example
+│   ├── __init__.py
+│   ├── data
+│   │   ├── faq_dataset.json
+│   │   ├── faq_my_project.md
+│   │   └── faq_seed.md
+│   ├── docs
+│   │   ├── rag_lesson_plan.md
+│   │   └── rag_practice.md
+│   ├── prompts
+│   │   └── answer_prompt.txt
+│   ├── requirements.txt
+│   ├── scripts
+│   │   ├── __init__.py
+│   │   ├── build_index.py
+│   │   ├── check_db_direct.py
+│   │   ├── fetch_faq.py
+│   │   └── prepare_faq_dataset.py
+│   ├── src
+│   │   ├── __init__.py
+│   │   ├── bot.py
+│   │   ├── config.py
+│   │   ├── db.py
+│   │   ├── main.py
+│   │   └── rag_service.py
+│   └── storage
+│       ├── .gitkeep
+│       ├── chat.db
+│       └── faiss_index
+│           ├── index.faiss
+│           └── index.pkl
+├── top_level.txt
+└── uv.lock

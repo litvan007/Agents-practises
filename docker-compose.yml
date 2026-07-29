@@ -1,0 +1,28 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tg-rag-bot
+    restart: unless-stopped          # автоматический перезапуск при падении
+    env_file:
+      - .env                         # загружаем переменные окружения
+    environment:
+      - TZ=Europe/Moscow             # часовой пояс (опционально)
+    volumes:
+      # Том для хранения базы данных и FAISS-индекса
+      - ./storage:/app/storage
+
+      # Для удобной разработки – раскомментируйте строку ниже,
+      # чтобы монтировать текущую папку с кодом внутрь контейнера.
+      # Тогда изменения в коде будут сразу видны без пересборки.
+      # - .:/app
+
+    # Порты не нужны, так как бот работает через polling
+    # healthcheck можно добавить позже, но для простоты опускаем
+    networks:
+      - tg-network
+
+networks:
+  tg-network:
+    driver: bridge

@@ -1,0 +1,37 @@
+[project]
+name = "agents-practises"
+version = "0.1.0"
+description = ""
+authors = [{ name = "landshaft-band", email = "kozlikoff2004@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+    "aiogram>=3.30.0",
+    "aiosqlite>=0.22.1",
+    "langchain>=1.3.14",
+    "langchain-community>=0.4.2",
+    "langchain-gigachat>=0.5.1",
+    "langchain-huggingface>=1.2.2",
+    "faiss-cpu>=1.14.3",
+    "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.2.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pre-commit>=3.6.0",
+]
+
+[build-system]
+# Для простоты оставляем setuptools (он не используется, если мы не собираем пакет)
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+#чтобы не считать проект за пакет, иначе выдает ошибку в сброки из за нестандартной структуры проекта
+package = false

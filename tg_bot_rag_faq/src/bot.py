@@ -1,20 +1,34 @@
 """Шаблон Telegram-бота для обучения."""
 
 from __future__ import annotations
-
+from functools import wraps
 import asyncio
 import logging
 from collections import defaultdict
 from typing import Dict, List, Tuple
-
+from aiogram.client.default import DefaultBotProperties
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 
-from .config_empty import Settings
-from .rag_service_empty import RAGService
+from src.config import Settings
+from src.rag_service import RAGService
+from src.db import init_db, save_message, get_recent_messages, cleanup_old_messages
 
 logger = logging.getLogger(__name__)
+
+HISTORY_LIMIT = 10
+
+##Декоратор для проверки пользоватея
+def check_user(func):
+    @wraps(func)
+    async def wrapper(self, message: Message, *args, **kwargs):
+        user_id = message.from_user.id
+        if user_id not in self.settings.allowed_user_ids:
+            await message.answer("Ошибка доступа!")
+            return
+        return await func(self, message, *args, **kwargs)
+    return wrapper
 
 
 class TelegramRAGBot:
@@ -23,23 +37,84 @@ class TelegramRAGBot:
     def __init__(self, settings: Settings, rag_service: RAGService) -> None:
         self.settings = settings
         self.rag_service = rag_service
-        self.bot = Bot(token=settings.telegram_bot_token, parse_mode="HTML")
+        self.bot = Bot(
+            token=settings.telegram_bot_token,
+            default=DefaultBotProperties(parse_mode="HTML")
+        )
         self.dispatcher = Dispatcher()
         self.chat_history: Dict[int, List[Tuple[str, str]]] = defaultdict(list)
-
-        # TODO: добавьте остальные хендлеры (/help, обычный текст)
         self.dispatcher.message.register(self.handle_start, CommandStart())
 
-    async def handle_start(self, message: Message) -> None:
-        await message.answer("TODO: представьтесь пользователю")
+        # TODO: добавьте остальные хендлеры (/help, обычный текст)
+        self.dispatcher.message.register(self.handle_help, Command("help"))
+        self.dispatcher.message.register(self.handle_message, F.text)
 
-    async def handle_answer(self, message: Message) -> None:
-        """Подсказка: проверьте доступ, вызовите RAG и верните ответ + источники."""
-        raise NotImplementedError
+    @check_user
+    async def handle_start(self, message: Message) -> None:
+
+        await message.answer("""Это бот ретривер misiseek.\n
+        Доступные команды:\n
+        /start — начать работу\n
+        /help — показать помощь""")
+
+    @check_user
+    async def handle_help(self, message: Message) -> None:
+        """Обработчик команды /help"""
+
+        await message.answer(
+            "Задайте мне любой вопрос теме почты, и я найду ответ в базе знаний."
+        )
+
+    @check_user
+    async def handle_message(self, message: Message) -> None:
+        user_id = message.from_user.id
+        question = message.text
+
+        # 1. Сохраняем вопрос пользователя
+        await save_message(user_id, "user", question)
+
+        # 2. Загружаем историю для контекста
+        history = await get_recent_messages(user_id, limit=10)  # 10 последних сообщений
+
+        # 3. Вызываем RAG с историей
+        result = await self.rag_service.ask(question, history)
+
+        answer = result.get("answer", "Извините, не удалось получить ответ.")
+        source_documents = result.get("source_documents", [])
+
+        # 4. Сохраняем ответ ассистента
+        await save_message(user_id, "assistant", answer)
+
+        # 5. Формируем ответ пользователю
+        response = answer
+        if source_documents:
+            response += "\n\n Источники:\n"
+            for i, doc in enumerate(source_documents, start=1):
+                source = doc.metadata.get("source", "Неизвестный источник")
+                response += f"{i}. {source}\n"
+
+        await message.answer(response)
+
 
     async def run(self) -> None:
-        logger.info("Запуск учебного бота")
+        """Запуск бота с предварительной инициализацией БД и фоновой очисткой."""
+        # Инициализация БД
+        await init_db()
+
+        # Запуск фоновой задачи для очистки старых записей (каждые 24 часа)
+        asyncio.create_task(self._periodic_cleanup())
+
+        logger.info("Запуск бота")
         await self.dispatcher.start_polling(self.bot)
+
+    async def _periodic_cleanup(self, interval_hours: int = 24, retention_days: int = 7) -> None:
+        """Фоновая задача: удаляет старые сообщения каждые interval_hours часов."""
+        while True:
+            try:
+                await asyncio.sleep(interval_hours * 3600)
+                await cleanup_old_messages(days=retention_days)
+            except Exception as e:
+                logger.exception("Ошибка в фоновой очистке: %s", e)
 
 
 async def run_bot() -> None:

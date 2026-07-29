@@ -1,0 +1,45 @@
+# Системные
+.git
+.gitignore
+.DS_Store
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.venv-poetry
+venv
+env
+ENV
+
+# Файлы IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Документация и временное
+docs/
+*.md
+!README.md          # можно оставить README, если нужно
+*.log
+*.tmp
+
+# Хранилище (оно будет подключено через volume, не нужно копировать в образ)
+storage/
+!.gitkeep
+
+# Секреты (не копируем .env в образ)
+.env
+.env.local
+.env.*.local
+
+# Файлы Poetry (сами файлы зависимостей копируются отдельно, но служебные папки не нужны)
+poetry.toml
